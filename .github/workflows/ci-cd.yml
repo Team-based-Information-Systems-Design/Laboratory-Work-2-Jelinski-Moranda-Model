@@ -1,0 +1,73 @@
+# CI/CD конвейер команды №2 — вариант для Python (ЛР2)
+#   CI  — непрерывная интеграция: автотесты pytest на каждый push и pull request;
+#   CD  — непрерывная доставка: архив с программой публикуется как артефакт каждого запуска;
+#   CD  — непрерывное развёртывание: при push тега v* автоматически создаётся GitHub Release с архивом.
+
+name: CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: CI — тесты
+    runs-on: ubuntu-latest
+    env:
+      LC_ALL: C.UTF-8
+      APP_NAME: ${{ github.event.repository.name }}
+
+    steps:
+      - name: Получение кода из репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Установка pytest
+        run: pip install pytest
+
+      - name: Автотесты
+        run: pytest -v tests
+
+      - name: Контрольный запуск программы
+        run: python src/jelinski_moranda.py
+
+      - name: Сборка архива с программой
+        run: zip -r "$APP_NAME.zip" src README.md -x "*__pycache__*"
+
+      - name: Доставка — публикация артефакта
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}
+          path: ${{ env.APP_NAME }}.zip
+          retention-days: 30
+
+  release:
+    name: CD — развёртывание релиза
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Получение собранного архива
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}
+
+      - name: Публикация GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ github.event.repository.name }}.zip
+          generate_release_notes: true
