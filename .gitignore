@@ -1,0 +1,15 @@
+# Кэш Python и pytest
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Сборка
+*.zip
+
+# Настройки сред разработки
+.vscode/
+.idea/
+
+# Служебные файлы ОС
+.DS_Store
+Thumbs.db
